@@ -18,6 +18,7 @@
           <el-select v-model="info.tplWebType">
             <el-option label="Vue2 Element UI 模版" value="element-ui" />
             <el-option label="Vue3 Element Plus 模版" value="element-plus" />
+            <el-option label="Vue3 Element Plus TypeScript 模版" value="element-plus-typescript" />
           </el-select>
         </el-form-item>
       </el-col>
@@ -71,6 +72,29 @@
       </el-col>
 
       <el-col :span="12">
+        <el-form-item prop="formColNum">
+          <template #label>
+            表单布局
+            <el-tooltip content="选择表单的栅格布局方式" placement="top">
+              <el-icon><question-filled /></el-icon>
+            </el-tooltip>
+          </template>
+          <el-select v-model="info.formColNum">
+            <el-option label="单列" :value="1" />
+            <el-option label="双列" :value="2" />
+            <el-option label="三列" :value="3" />
+          </el-select>
+        </el-form-item>
+      </el-col>
+
+      <el-col :span="12">
+        <el-form-item prop="genView">
+          <template #label>扩展功能</template>
+          <el-checkbox v-model="info.view">生成详情页</el-checkbox>
+        </el-form-item>
+      </el-col>
+
+      <el-col :span="12">
         <el-form-item prop="genType">
           <template #label>
             生成代码方式
@@ -78,8 +102,8 @@
               <el-icon><question-filled /></el-icon>
             </el-tooltip>
           </template>
-          <el-radio v-model="info.genType" label="0">zip压缩包</el-radio>
-          <el-radio v-model="info.genType" label="1">自定义路径</el-radio>
+          <el-radio v-model="info.genType" value="0">zip压缩包</el-radio>
+          <el-radio v-model="info.genType" value="1">自定义路径</el-radio>
         </el-form-item>
       </el-col>
 
@@ -91,11 +115,12 @@
               <el-icon><question-filled /></el-icon>
             </el-tooltip>
           </template>
-          <tree-select
-            v-model:value="info.parentMenuId"
-            :options="menuOptions"
-            :objMap="{ value: 'menuId', label: 'menuName', children: 'children' }"
+          <el-tree-select
+            v-model="info.parentMenuId"
+            :data="menuOptions"
+            :props="{ value: 'menuId', label: 'menuName', children: 'children' }"
             placeholder="请选择系统菜单"
+            check-strictly
           />
         </el-form-item>
       </el-col>
@@ -233,11 +258,11 @@
 </template>
 
 <script setup>
-import { listMenu } from "@/api/system/menu";
+import { listMenu } from "@/api/system/menu"
 
-const subColumns = ref([]);
-const menuOptions = ref([]);
-const { proxy } = getCurrentInstance();
+const subColumns = ref([])
+const menuOptions = ref([])
+const { proxy } = getCurrentInstance()
 
 const props = defineProps({
   info: {
@@ -248,7 +273,7 @@ const props = defineProps({
     type: Array,
     default: null
   }
-});
+})
 
 // 表单校验
 const rules = ref({
@@ -257,41 +282,47 @@ const rules = ref({
   moduleName: [{ required: true, message: "请输入生成模块名", trigger: "blur" }],
   businessName: [{ required: true, message: "请输入生成业务名", trigger: "blur" }],
   functionName: [{ required: true, message: "请输入生成功能名", trigger: "blur" }]
-});
+})
+
 function subSelectChange(value) {
-  props.info.subTableFkName = "";
+  props.info.subTableFkName = ""
 }
+
 function tplSelectChange(value) {
   if (value !== "sub") {
-    props.info.subTableName = "";
-    props.info.subTableFkName = "";
+    props.info.subTableName = ""
+    props.info.subTableFkName = ""
   }
 }
+
 function setSubTableColumns(value) {
   for (var item in props.tables) {
-    const name = props.tables[item].tableName;
+    const name = props.tables[item].tableName
     if (value === name) {
-      subColumns.value = props.tables[item].columns;
-      break;
+      subColumns.value = props.tables[item].columns
+      break
     }
   }
 }
+
 /** 查询菜单下拉树结构 */
 function getMenuTreeselect() {
   listMenu().then(response => {
-    menuOptions.value = proxy.handleTree(response.data, "menuId");
-  });
+    menuOptions.value = proxy.handleTree(response.data, "menuId")
+  })
 }
 
+onMounted(() => {
+  getMenuTreeselect()
+})
+
 watch(() => props.info.subTableName, val => {
-  setSubTableColumns(val);
-});
+  setSubTableColumns(val)
+})
 
 watch(() => props.info.tplWebType, val => {
   if (val === '') {
-    props.info.tplWebType = "element-plus";
+    props.info.tplWebType = "element-plus"
   }
-});
-
-getMenuTreeselect();
+})
 </script>

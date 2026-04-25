@@ -133,59 +133,27 @@
       />
 
       <!-- 调度日志详细 -->
-      <el-dialog title="调度日志详细" v-model="open" width="700px" append-to-body>
-         <el-form :model="form" label-width="100px">
-            <el-row>
-               <el-col :span="12">
-                  <el-form-item label="日志序号：">{{ form.jobLogId }}</el-form-item>
-                  <el-form-item label="任务名称：">{{ form.jobName }}</el-form-item>
-               </el-col>
-               <el-col :span="12">
-                  <el-form-item label="任务分组：">{{ form.jobGroup }}</el-form-item>
-                  <el-form-item label="执行时间：">{{ form.createTime }}</el-form-item>
-               </el-col>
-               <el-col :span="24">
-                  <el-form-item label="调用方法：">{{ form.invokeTarget }}</el-form-item>
-               </el-col>
-               <el-col :span="24">
-                  <el-form-item label="日志信息：">{{ form.jobMessage }}</el-form-item>
-               </el-col>
-               <el-col :span="24">
-                  <el-form-item label="执行状态：">
-                     <div v-if="form.status == 0">正常</div>
-                     <div v-else-if="form.status == 1">失败</div>
-                  </el-form-item>
-               </el-col>
-               <el-col :span="24">
-                  <el-form-item label="异常信息：" v-if="form.status == 1">{{ form.exceptionInfo }}</el-form-item>
-               </el-col>
-            </el-row>
-         </el-form>
-         <template #footer>
-            <div class="dialog-footer">
-               <el-button @click="open = false">关 闭</el-button>
-            </div>
-         </template>
-      </el-dialog>
+      <job-detail v-model:visible="open" :row="form" type="log" />
    </div>
 </template>
 
 <script setup name="JobLog">
-import { getJob } from "@/api/monitor/job";
-import { listJobLog, delJobLog, cleanJobLog } from "@/api/monitor/jobLog";
+import JobDetail from './detail'
+import { getJob } from "@/api/monitor/job"
+import { listJobLog, delJobLog, cleanJobLog } from "@/api/monitor/jobLog"
 
-const { proxy } = getCurrentInstance();
-const { sys_common_status, sys_job_group } = proxy.useDict("sys_common_status", "sys_job_group");
+const { proxy } = getCurrentInstance()
+const { sys_common_status, sys_job_group } = useDict("sys_common_status", "sys_job_group")
 
-const jobLogList = ref([]);
-const open = ref(false);
-const loading = ref(true);
-const showSearch = ref(true);
-const ids = ref([]);
-const multiple = ref(true);
-const total = ref(0);
-const dateRange = ref([]);
-const route = useRoute();
+const jobLogList = ref([])
+const open = ref(false)
+const loading = ref(true)
+const showSearch = ref(true)
+const ids = ref([])
+const multiple = ref(true)
+const total = ref(0)
+const dateRange = ref([])
+const route = useRoute()
 
 const data = reactive({
   form: {},
@@ -196,82 +164,88 @@ const data = reactive({
     dictType: undefined,
     status: undefined
   }
-});
+})
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form, rules } = toRefs(data)
 
 /** 查询调度日志列表 */
 function getList() {
-  loading.value = true;
+  loading.value = true
   listJobLog(proxy.addDateRange(queryParams.value, dateRange.value)).then(response => {
-    jobLogList.value = response.rows;
-    total.value = response.total;
-    loading.value = false;
-  });
+    jobLogList.value = response.rows
+    total.value = response.total
+    loading.value = false
+  })
 }
+
 // 返回按钮
 function handleClose() {
-  const obj = { path: "/monitor/job" };
-  proxy.$tab.closeOpenPage(obj);
+  const obj = { path: "/monitor/job" }
+  proxy.$tab.closeOpenPage(obj)
 }
+
 /** 搜索按钮操作 */
 function handleQuery() {
-  queryParams.value.pageNum = 1;
-  getList();
+  queryParams.value.pageNum = 1
+  getList()
 }
+
 /** 重置按钮操作 */
 function resetQuery() {
-  dateRange.value = [];
-  proxy.resetForm("queryRef");
-  handleQuery();
+  dateRange.value = []
+  proxy.resetForm("queryRef")
+  handleQuery()
 }
+
 // 多选框选中数据
 function handleSelectionChange(selection) {
-  ids.value = selection.map(item => item.jobLogId);
-  multiple.value = !selection.length;
+  ids.value = selection.map(item => item.jobLogId)
+  multiple.value = !selection.length
 }
+
 /** 详细按钮操作 */
 function handleView(row) {
-  open.value = true;
-  form.value = row;
+  open.value = true
+  form.value = row
 }
+
 /** 删除按钮操作 */
 function handleDelete(row) {
   proxy.$modal.confirm('是否确认删除调度日志编号为"' + ids.value + '"的数据项?').then(function () {
-    return delJobLog(ids.value);
+    return delJobLog(ids.value)
   }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+    getList()
+    proxy.$modal.msgSuccess("删除成功")
+  }).catch(() => {})
 }
+
 /** 清空按钮操作 */
 function handleClean() {
   proxy.$modal.confirm("是否确认清空所有调度日志数据项?").then(function () {
-    return cleanJobLog();
+    return cleanJobLog()
   }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("清空成功");
-  }).catch(() => {});
+    getList()
+    proxy.$modal.msgSuccess("清空成功")
+  }).catch(() => {})
 }
+
 /** 导出按钮操作 */
 function handleExport() {
   proxy.download("monitor/jobLog/export", {
     ...queryParams.value,
-  }, `job_log_${new Date().getTime()}.xlsx`);
+  }, `job_log_${new Date().getTime()}.xlsx`)
 }
 
 (() => {
-  const jobId = route.params && route.params.jobId;
+  const jobId = route.params && route.params.jobId
   if (jobId !== undefined && jobId != 0) {
     getJob(jobId).then(response => {
-      queryParams.value.jobName = response.data.jobName;
-      queryParams.value.jobGroup = response.data.jobGroup;
-      getList();
-    });
+      queryParams.value.jobName = response.data.jobName
+      queryParams.value.jobGroup = response.data.jobGroup
+      getList()
+    })
   } else {
-    getList();
+    getList()
   }
-})();
-
-getList();
+})()
 </script>

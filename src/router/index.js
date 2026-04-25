@@ -71,13 +71,19 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/lock',
+    component: () => import('@/views/lock'),
+    hidden: true,
+    meta: { title: '锁定屏幕' }
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
     children: [
       {
-        path: 'profile',
+        path: 'profile/:activeTab?',
         component: () => import('@/views/system/user/profile/index'),
         name: 'Profile',
         meta: { title: '个人中心', icon: 'user' }
@@ -166,10 +172,9 @@ const router = createRouter({
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition
-    } else {
-      return { top: 0 }
     }
+    return { top: 0 }
   },
-});
+})
 
-export default router;
+export default router

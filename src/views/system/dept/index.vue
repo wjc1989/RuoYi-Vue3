@@ -38,6 +38,15 @@
          </el-col>
          <el-col :span="1.5">
             <el-button
+               type="warning"
+               plain
+               icon="Check"
+               @click="handleSaveSort"
+               v-hasPermi="['system:dept:edit']"
+            >保存排序</el-button>
+         </el-col>
+         <el-col :span="1.5">
+            <el-button
                type="info"
                plain
                icon="Sort"
@@ -56,7 +65,11 @@
          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
       >
          <el-table-column prop="deptName" label="部门名称" width="260"></el-table-column>
-         <el-table-column prop="orderNum" label="排序" width="200"></el-table-column>
+         <el-table-column prop="orderNum" label="排序" width="200">
+            <template #default="scope">
+               <el-input-number v-model="scope.row.orderNum" controls-position="right" :min="0" style="width: 88px" />
+            </template>
+         </el-table-column>
          <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
                <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
@@ -123,7 +136,7 @@
                         <el-radio
                            v-for="dict in sys_normal_disable"
                            :key="dict.value"
-                           :label="dict.value"
+                           :value="dict.value"
                         >{{ dict.label }}</el-radio>
                      </el-radio-group>
                   </el-form-item>
@@ -141,19 +154,20 @@
 </template>
 
 <script setup name="Dept">
-import { listDept, getDept, delDept, addDept, updateDept, listDeptExcludeChild } from "@/api/system/dept";
+import { listDept, getDept, delDept, addDept, updateDept, updateDeptSort, listDeptExcludeChild } from "@/api/system/dept"
 
-const { proxy } = getCurrentInstance();
-const { sys_normal_disable } = proxy.useDict("sys_normal_disable");
+const { proxy } = getCurrentInstance()
+const { sys_normal_disable } = useDict("sys_normal_disable")
 
-const deptList = ref([]);
-const open = ref(false);
-const loading = ref(true);
-const showSearch = ref(true);
-const title = ref("");
-const deptOptions = ref([]);
-const isExpandAll = ref(true);
-const refreshTable = ref(true);
+const deptList = ref([])
+const open = ref(false)
+const loading = ref(true)
+const showSearch = ref(true)
+const title = ref("")
+const deptOptions = ref([])
+const isExpandAll = ref(true)
+const refreshTable = ref(true)
+const originalOrders = ref({})
 
 const data = reactive({
   form: {},
@@ -168,23 +182,26 @@ const data = reactive({
     email: [{ type: "email", message: "请输入正确的邮箱地址", trigger: ["blur", "change"] }],
     phone: [{ pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: "请输入正确的手机号码", trigger: "blur" }]
   },
-});
+})
 
-const { queryParams, form, rules } = toRefs(data);
+const { queryParams, form, rules } = toRefs(data)
 
 /** 查询部门列表 */
 function getList() {
-  loading.value = true;
+  loading.value = true
   listDept(queryParams.value).then(response => {
-    deptList.value = proxy.handleTree(response.data, "deptId");
-    loading.value = false;
-  });
+    deptList.value = proxy.handleTree(response.data, "deptId")
+    recordOriginalOrders(deptList.value)
+    loading.value = false
+  })
 }
+
 /** 取消按钮 */
 function cancel() {
-  open.value = false;
-  reset();
+  open.value = false
+  reset()
 }
+
 /** 表单重置 */
 function reset() {
   form.value = {
@@ -196,79 +213,122 @@ function reset() {
     phone: undefined,
     email: undefined,
     status: "0"
-  };
-  proxy.resetForm("deptRef");
+  }
+  proxy.resetForm("deptRef")
 }
+
 /** 搜索按钮操作 */
 function handleQuery() {
-  getList();
+  getList()
 }
+
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
-  handleQuery();
+  proxy.resetForm("queryRef")
+  handleQuery()
 }
+
 /** 新增按钮操作 */
 function handleAdd(row) {
-  reset();
+  reset()
   listDept().then(response => {
-    deptOptions.value = proxy.handleTree(response.data, "deptId");
-  });
+    deptOptions.value = proxy.handleTree(response.data, "deptId")
+  })
   if (row != undefined) {
-    form.value.parentId = row.deptId;
+    form.value.parentId = row.deptId
   }
-  open.value = true;
-  title.value = "添加部门";
+  open.value = true
+  title.value = "添加部门"
 }
+
 /** 展开/折叠操作 */
 function toggleExpandAll() {
-  refreshTable.value = false;
-  isExpandAll.value = !isExpandAll.value;
+  refreshTable.value = false
+  isExpandAll.value = !isExpandAll.value
   nextTick(() => {
-    refreshTable.value = true;
-  });
+    refreshTable.value = true
+  })
 }
+
 /** 修改按钮操作 */
 function handleUpdate(row) {
-  reset();
+  reset()
   listDeptExcludeChild(row.deptId).then(response => {
-    deptOptions.value = proxy.handleTree(response.data, "deptId");
-  });
+    deptOptions.value = proxy.handleTree(response.data, "deptId")
+  })
   getDept(row.deptId).then(response => {
-    form.value = response.data;
-    open.value = true;
-    title.value = "修改部门";
-  });
+    form.value = response.data
+    open.value = true
+    title.value = "修改部门"
+  })
 }
+
 /** 提交按钮 */
 function submitForm() {
   proxy.$refs["deptRef"].validate(valid => {
     if (valid) {
       if (form.value.deptId != undefined) {
         updateDept(form.value).then(response => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
+          proxy.$modal.msgSuccess("修改成功")
+          open.value = false
+          getList()
+        })
       } else {
         addDept(form.value).then(response => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
+          proxy.$modal.msgSuccess("新增成功")
+          open.value = false
+          getList()
+        })
       }
     }
-  });
+  })
 }
+
+/** 递归记录原始排序 */
+function recordOriginalOrders(list) {
+  list.forEach(item => {
+    originalOrders.value[item.deptId] = item.orderNum
+    if (item.children && item.children.length) {
+      recordOriginalOrders(item.children)
+    }
+  })
+}
+
+/** 保存排序 */
+function handleSaveSort() {
+  const changedDeptIds = []
+  const changedOrderNums = []
+  const collectChanged = (list) => {
+    list.forEach(item => {
+      if (String(originalOrders.value[item.deptId]) !== String(item.orderNum)) {
+        changedDeptIds.push(item.deptId)
+        changedOrderNums.push(item.orderNum)
+      }
+      if (item.children && item.children.length) {
+        collectChanged(item.children)
+      }
+    })
+  }
+  collectChanged(deptList.value)
+  if (changedDeptIds.length === 0) {
+   proxy.$modal.msgWarning("未检测到排序修改")
+    return
+  }
+  updateDeptSort({ deptIds: changedDeptIds.join(","), orderNums: changedOrderNums.join(",") }).then(() => {
+   proxy.$modal.msgSuccess("排序保存成功")
+    recordOriginalOrders(deptList.value)
+  })
+}
+
 /** 删除按钮操作 */
 function handleDelete(row) {
   proxy.$modal.confirm('是否确认删除名称为"' + row.deptName + '"的数据项?').then(function() {
-    return delDept(row.deptId);
+    return delDept(row.deptId)
   }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+    getList()
+    proxy.$modal.msgSuccess("删除成功")
+  }).catch(() => {})
 }
 
-getList();
+getList()
 </script>
